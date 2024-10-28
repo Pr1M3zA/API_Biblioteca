@@ -1,0 +1,57 @@
+CREATE DATABASE IF NOT EXISTS BIBLIO_DB;
+USE BIBLIO_DB;
+
+CREATE TABLE libros(
+	isbn CHAR(13) NOT NULL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    no_Paginas INT NOT NULL
+)ENGINE=INNODB;
+
+DROP PROCEDURE IF EXISTS SP_NUEVO_LIBRO;
+DELIMITER //
+CREATE PROCEDURE SP_NUEVO_LIBRO(IN _isbn CHAR(13), IN _nombre VARCHAR(100), IN _no_Paginas INT)
+BEGIN 
+	DECLARE repetido INT;
+	IF (_no_Paginas < 1) THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El libro debe tener al menos una página';
+    END IF;
+	SELECT COUNT(*) INTO repetido FROM libros WHERE isbn = _isbn;  
+    IF(repetido > 0) THEN
+		SIGNAL SQLSTATE '45000'
+		SET MESSAGE_TEXT = 'El ISBM ya esta registrado';
+    ELSE
+		INSERT INTO libros(isbn, nombre, no_Paginas) VALUES (_isbn, _nombre, _no_Paginas);
+        COMMIT;
+    END IF;
+END//
+DELIMITER ;
+
+CALL SP_NUEVO_LIBRO ('9780140449136', 'Los hermanos Karamázov', 824);
+
+DROP PROCEDURE IF EXISTS SP_BORRAR_LIBRO;
+DELIMITER //
+CREATE PROCEDURE SP_BORRAR_LIBRO(IN _isbn CHAR(13))
+BEGIN 
+	DELETE FROM libros WHERE isbn = _isbn;
+    IF (ROW_COUNT() > 0) THEN 
+		SELECT ROW_COUNT();
+	END IF;
+	COMMIT;
+END// 
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS SP_ACTUALIZAR_LIBRO;
+DELIMITER //
+CREATE PROCEDURE SP_ACTUALIZAR_LIBRO(IN _isbn CHAR(13), IN _nombre VARCHAR(100), IN _no_Paginas INT)
+BEGIN 
+	IF (_no_Paginas < 0) THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El libro debe tener al menos una página';
+    END IF;
+	UPDATE libros SET nombre= IFNULL(NULLIF(_nombre, ''),nombre), no_Paginas= IFNULL(NULLIF(_no_Paginas, 0),no_Paginas) WHERE isbn = _isbn;
+    IF (ROW_COUNT() > 0) THEN 
+		SELECT ROW_COUNT();
+	END IF;
+END//
+DELIMITER ;
+
+CALL SP_NUEVO_LIBRO ('9780140449136', 'Los hermanos Karamázov', 824);
